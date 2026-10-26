@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="meta-title">A.R.S.A — Shared Song</title>
+  <meta name="description" id="meta-desc" content="Listen to shared music on A.R.S.A — Ad-free, open-source music player. Powered by ARYAVL.COM">
+
+  <meta property="og:type" content="music.song">
+  <meta property="og:site_name" content="A.R.S.A">
+  <meta property="og:title" id="og-title" content="A.R.S.A — Stream Ad-Free">
+  <meta property="og:description" id="og-desc" content="Stream ad-free with synchronized lyrics. Pure Sound">
+  <meta property="og:image" id="og-image" content="https://listen.aryavl.com/assets/og-preview.jpg">
+  <meta property="og:url" id="og-url" content="https://listen.aryavl.com">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" id="tw-title" content="A.R.S.A — Stream Ad-Free">
+  <meta name="twitter:image" id="tw-image" content="https://listen.aryavl.com/assets/og-preview.jpg">
+  <meta name="theme-color" content="#000">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { width: 100%; height: 100%; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #000;
+      color: #fff;
+    }
+
+    /* ─────────────────────────────────────────────────────
+       ARTWORK — horizontal image, anchored to the top,
+       fills full viewport width, ~55 vh tall on mobile,
+       ~60 vh on desktop.
+    ───────────────────────────────────────────────────── */
+    .artwork-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* Blurred fill — covers the whole viewport regardless of image aspect ratio.
+       Eliminates black bars from square Deezer art or 16:9 YouTube thumbnails. */
+    .artwork-fill {
+      position: absolute;
+      inset: -60px;
+      width: calc(100% + 120px);
+      height: calc(100% + 120px);
+      object-fit: cover;
+      object-position: center;
+      filter: blur(50px) saturate(1.5) brightness(0.7);
+      display: block;
+    }
+
+    /* Sharp artwork on top, covers as much as it can */
+    .artwork-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+      transform: scale(1.03);
+      transform-origin: center top;
+      transition: opacity 0.5s ease;
+    }
+
+    /* ─────────────────────────────────────────────────────
+       PROGRESSIVE BLUR LAYERS
+       Each layer uses backdrop-filter + a gradient mask
+       so blur increases from the image mid-point downward.
+       Layers are z-indexed above the artwork.
+    ───────────────────────────────────────────────────── */
+    .blur-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* Layer 1 — very light, starts ~35% into the image */
+    .blur-1 {
+      z-index: 1;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 28%,
+        black       40%,
+        black       48%,
+        transparent 58%);
+      mask-image: linear-gradient(to bottom,
+        transparent 28%,
+        black       40%,
+        black       48%,
+        transparent 58%);
+    }
+
+    /* Layer 2 */
+    .blur-2 {
+      z-index: 2;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 40%,
+        black       52%,
+        black       60%,
+        transparent 70%);
+      mask-image: linear-gradient(to bottom,
+        transparent 40%,
+        black       52%,
+        black       60%,
+        transparent 70%);
+    }
+
+    /* Layer 3 */
+    .blur-3 {
+      z-index: 3;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 52%,
+        black       62%,
+        black       100%);
+      mask-image: linear-gradient(to bottom,
+        transparent 52%,
+        black       62%,
+        black       100%);
+    }
+
+    /* Layer 4 */
+    .blur-4 {
+      z-index: 4;
+      backdrop-filter: blur(36px);
+      -webkit-backdrop-filter: blur(36px);
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 60%,
+        black       70%,
+        black       100%);
+      mask-image: linear-gradient(to bottom,
+        transparent 60%,
+        black       70%,
+        black       100%);
+    }
+
+    /* Layer 5 — heaviest, bottom quarter only */
+    .blur-5 {
+      z-index: 5;
+      backdrop-filter: blur(56px);
+      -webkit-backdrop-filter: blur(56px);
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 70%,
+        black       80%,
+        black       100%);
+      mask-image: linear-gradient(to bottom,
+        transparent 70%,
+        black       80%,
+        black       100%);
+    }
+
+    /* ─────────────────────────────────────────────────────
+       GRADIENT OVERLAYS
+       1. Bottom darkening — blends artwork into black
+       2. Top vignette — soft top edge
+    ───────────────────────────────────────────────────── */
+    /* Subtle bottom gradient — only for text legibility, not a dark zone */
+    .overlay-bottom {
+      position: fixed;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+      background: linear-gradient(
+        to bottom,
+        transparent      0%,
+        transparent      50%,
+        rgba(0,0,0,0.25) 68%,
+        rgba(0,0,0,0.55) 82%,
+        rgba(0,0,0,0.7)  100%
+      );
+    }
+
+    .overlay-top {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 80px;
+      z-index: 6;
+      pointer-events: none;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.2), transparent);
+    }
+
+
+
+    /* ─────────────────────────────────────────────────────
+       BOTTOM CONTENT — song info + buttons
+       Pinned to the bottom of the viewport.
+    ───────────────────────────────────────────────────── */
+    .page-content {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      pointer-events: none;
+    }
+
+    .content-area {
+      pointer-events: all;
+      width: 100%;
+    }
+
+    .content-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 28px 44px;
+    }
+
+    @media (min-width: 768px) {
+      .content-inner { padding: 0 48px 56px; }
+    }
+
+    @media (min-width: 1200px) {
+      .content-inner {
+        max-width: 860px;
+        padding: 0 64px 68px;
+      }
+    }
+
+    /* ── Song metadata ── */
+    .song-meta {
+      margin-bottom: 24px;
+    }
+
+    .card-source {
+      font-size: 0.78rem;
+      font-weight: 400;
+      color: rgba(255,255,255,0.48);
+      letter-spacing: 0.01em;
+      margin-bottom: 7px;
+    }
+
+    .card-title {
+      font-size: clamp(1.55rem, 4.5vw, 2.8rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.16;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+
+    .card-artist {
+      font-size: clamp(0.95rem, 2vw, 1.2rem);
+      font-weight: 400;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Buttons ── */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    @media (max-width: 560px) {
+      .action-buttons { flex-direction: column; }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 14px 26px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      text-decoration: none;
+      border-radius: 100px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      user-select: none;
+      white-space: nowrap;
+      transition: transform 0.2s cubic-bezier(0.16,1,0.3,1),
+                  box-shadow 0.2s ease,
+                  background 0.2s ease;
+    }
+
+    .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    @media (max-width: 560px) { .btn { width: 100%; } }
+
+    .btn-primary {
+      background: #fff;
+      color: #000;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+    }
+    .btn-primary:hover  { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(0,0,0,0.5); }
+    .btn-primary:active { transform: scale(0.97); }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.13);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.17);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+    .btn-secondary:hover  { background: rgba(255,255,255,0.2); transform: translateY(-2px); }
+    .btn-secondary:active { transform: scale(0.97); }
+
+    /* ── Loading shimmer ── */
+    @keyframes shimmer {
+      0%,100% { opacity: 0.38; }
+      50%      { opacity: 0.7; }
+    }
+    .loading .card-title,
+    .loading .card-artist,
+    .loading .card-source { animation: shimmer 1.6s ease infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- Horizontal artwork — fills full width, top-anchored -->
+  <div class="artwork-layer">
+    <img class="artwork-fill" id="artwork-fill"
+         src="https://i.ytimg.com/vi/kXYiU_JCYtU/maxresdefault.jpg"
+         alt="" aria-hidden="true">
+    <img class="artwork-img" id="artwork-img"
+         src="https://i.ytimg.com/vi/kXYiU_JCYtU/maxresdefault.jpg"
+         alt="Song artwork">
+  </div>
+
+  <!-- Progressive blur layers (stacked, masked to each zone) -->
+  <div class="blur-layer blur-1"></div>
+  <div class="blur-layer blur-2"></div>
+  <div class="blur-layer blur-3"></div>
+  <div class="blur-layer blur-4"></div>
+  <div class="blur-layer blur-5"></div>
+
+  <!-- Gradient overlays -->
+  <div class="overlay-top"></div>
+  <div class="overlay-bottom"></div>
+
+
+  <!-- Bottom content -->
+  <div class="page-content">
+    <div class="content-area">
+      <div class="content-inner">
+        <div class="song-meta loading" id="song-meta">
+          <p class="card-source" id="card-source">From Convx</p>
+          <h1 class="card-title" id="song-name">Loading song...</h1>
+          <p class="card-artist" id="song-artist">A.R.S.A</p>
+        </div>
+
+        <div class="action-buttons">
+          <a href="#" class="btn btn-primary" id="btn-open-convx">
+            <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Open in A.R.S.A
+          </a>
+          <a href="https://download.app.aryavl.com"
+             class="btn btn-secondary" id="btn-download-convx"
+             target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Get A.R.S.A
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const artworkImg   = document.getElementById('artwork-img');
+      const artworkFill  = document.getElementById('artwork-fill');
+      const songName     = document.getElementById('song-name');
+      const songArtist   = document.getElementById('song-artist');
+      const cardSource   = document.getElementById('card-source');
+      const songMeta     = document.getElementById('song-meta');
+      const btnOpenConvx = document.getElementById('btn-open-convx');
+      const metaTitle    = document.getElementById('meta-title');
+
+      // Swap artwork — updates both the sharp layer and the blurred fill
+      function setArtwork(url) {
+        artworkImg.src  = url;
+        artworkFill.src = url;
+      }
+
+      // Parse URL
+      function parseMedia(urlStr) {
+        try {
+          const u = new URL(urlStr.startsWith('http') ? urlStr : 'https://' + urlStr);
+          let videoId    = u.searchParams.get('v');
+          let playlistId = u.searchParams.get('list');
+          let artistId   = null;
+
+          if (!videoId) {
+            const m = u.pathname.match(/^\/(?:watch|song|v)\/([a-zA-Z0-9_-]{11})/);
+            if (m) videoId = m[1];
+            else if (u.hostname === 'youtu.be') {
+              const seg = u.pathname.split('/').filter(Boolean)[0];
+              if (seg && seg.length === 11) videoId = seg;
+            }
+          }
+          if (!playlistId) {
+            const m = u.pathname.match(/^\/playlist\/([a-zA-Z0-9_-]+)/);
+            if (m) playlistId = m[1];
+          }
+          const am = u.pathname.match(/^\/(?:channel|artist)\/([a-zA-Z0-9_-]+)/);
+          if (am) artistId = am[1];
+
+          return { videoId, playlistId, artistId };
+        } catch (e) { return {}; }
+      }
+
+      // Deep-link
+      function setupLaunchButton(videoId, playlistId, artistId) {
+        let path = '';
+        if (videoId)         path = `watch?v=${videoId}`;
+        else if (playlistId) path = `playlist?list=${playlistId}`;
+        else if (artistId)   path = `channel/${artistId}`;
+
+        const intentMain   = `intent://music.youtube.com/${path}#Intent;scheme=https;package=com.arsa.aryavl;component=com.arsa.aryavl/.WelcomeActivity;end`;
+        const intentDomain = `intent://listen.aryavl.com/${path}#Intent;scheme=https;package=com.arsa.aryavl;end`;
+        const scheme       = `arsa://${path}`;
+
+        function launch(e) {
+          e.preventDefault();
+          const t = Date.now();
+          window.location.href = intentMain;
+          setTimeout(() => { if (!document.hidden && Date.now()-t<1500) window.location.href = scheme; }, 200);
+          setTimeout(() => { if (!document.hidden && Date.now()-t<1500) window.location.href = intentDomain; }, 500);
+        }
+
+        btnOpenConvx.href = intentMain;
+        btnOpenConvx.onclick = launch;
+      }
+
+      // Resolve track
+      async function resolveTrack(urlStr) {
+        const { videoId, playlistId, artistId } = parseMedia(urlStr);
+
+        if (videoId) {
+          // Start with YouTube maxres as a placeholder while we fetch better art
+          const ytMaxres = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+          const ytHq     = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+          setArtwork(ytMaxres);
+
+          setupLaunchButton(videoId, null, null);
+
+          try {
+            const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+            if (res.ok) {
+              const data = await res.json();
+              const trackTitle  = data.title       || `Track (${videoId})`;
+              const trackArtist = data.author_name || 'A.R.S.A';
+              songName.textContent   = trackTitle;
+              songArtist.textContent = trackArtist;
+              cardSource.textContent = 'From Library';
+              if (metaTitle) metaTitle.textContent = `${trackTitle} — A.R.S.A`;
+
+              // Fetch Deezer for full-bleed square album art (no letterbox bars)
+              try {
+                const q = encodeURIComponent(`${trackTitle} ${trackArtist}`);
+                const dz = await fetch(`https://api.deezer.com/search?q=${q}&limit=3`);
+                if (dz.ok) {
+                  const dzData = await dz.json();
+                  const cover  = dzData.data?.[0]?.album?.cover_xl;
+                  if (cover) {
+                    setArtwork(cover);
+                  } else {
+                    // Deezer had no result — probe YouTube maxres, fall back to hq
+                    const probe = new Image();
+                    probe.onerror = () => setArtwork(ytHq);
+                    probe.src = ytMaxres;
+                  }
+                }
+              } catch {
+                // Deezer failed — keep YouTube art already set
+              }
+
+            } else {
+              songName.textContent = `Track (${videoId})`;
+            }
+          } catch {
+            songName.textContent = `Track (${videoId})`;
+          }
+
+        } else if (playlistId) {
+          setArtwork('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=90');
+          songName.textContent   = 'Shared Playlist';
+          songArtist.textContent = `Playlist (${playlistId})`;
+          cardSource.textContent = 'From Library';
+          setupLaunchButton(null, playlistId, null);
+
+        } else if (artistId) {
+          setArtwork('https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1600&q=90');
+          songName.textContent   = 'Artist Channel';
+          songArtist.textContent = `Artist (${artistId})`;
+          cardSource.textContent = 'From Convx';
+          setupLaunchButton(null, null, artistId);
+        }
+
+        songMeta.classList.remove('loading');
+      }
+
+      // Boot
+      const curr    = window.location.href;
+      const initial = parseMedia(curr);
+      if (initial.videoId || initial.playlistId || initial.artistId) {
+        resolveTrack(curr);
+      } else {
+        resolveTrack('https://listen.aryavl.com/watch?v=kXYiU_JCYtU');
+      }
+    })();
+  </script>
+
+</body>
+</html>
