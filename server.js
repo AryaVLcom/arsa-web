@@ -171,7 +171,8 @@ async function buildShareHtml(reqUrl, { videoId, playlistId, artistId }) {
   <meta name="twitter:description" id="tw-desc" content="${e(description)}">
   <meta name="twitter:image" id="tw-image" content="${e(image)}">
 
-  <meta name="theme-color" content="#0a0010">
+  <meta name="theme-color" content="#040508">
+  <link rel="icon" href="https://app.aryavl.com/assets/assets/images/arsa-logo.6b8664469176a1cbc68b69165e007f8d.png">
   <!-- Preload data for client-side JS (avoids extra oEmbed call on load) -->
   <script>
     window.__ARSA_SHARE__ = {
@@ -186,58 +187,142 @@ async function buildShareHtml(reqUrl, { videoId, playlistId, artistId }) {
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/share.css">
 </head>
 <body>
-  <svg class="filters-def" aria-hidden="true">
+  <svg class="liquid-filters" aria-hidden="true">
     <defs>
-      <filter id="glass-lens" x="-10%" y="-10%" width="120%" height="120%" filterUnits="objectBoundingBox">
-        <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" result="noise"/>
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
-        <feBlend in="SourceGraphic" in2="displaced" mode="overlay"/>
+      <filter id="liquid-glass-lens" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.014 0.018" numOctaves="2" seed="7" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="2.5" result="smoothNoise" />
+        <feDisplacementMap in="SourceGraphic" in2="smoothNoise" scale="10" xChannelSelector="R" yChannelSelector="G" />
       </filter>
     </defs>
   </svg>
-  <div class="backdrop-stage" aria-hidden="true">
-    <div class="bg-shape shape-1"></div>
-    <div class="bg-shape shape-2"></div>
-    <div class="bg-shape shape-3"></div>
+  <div class="ambient-stage" aria-hidden="true">
+    <div id="bleed-primary" class="artwork-bleed-layer" style="background-image: url('${e(image)}')"></div>
+    <div id="bleed-secondary" class="artwork-bleed-layer layer-secondary" style="background-image: url('${e(image)}')"></div>
+    <div id="aura-1" class="aura-orb aura-1"></div>
+    <div id="aura-2" class="aura-orb aura-2"></div>
+    <div id="aura-3" class="aura-orb aura-3"></div>
+    <div class="ambient-vignette"></div>
   </div>
-  <div class="film-grain" aria-hidden="true"></div>
-  <header class="top-bar">
-    <a href="/" class="brand-capsule"><span></span> A.R.S.A</a>
-  </header>
-  <main class="main-container">
-    <div class="glass-card" id="song-card">
-      <div class="cover-art-wrapper">
-        <img id="cover-art" src="${e(image)}" alt="Song artwork">
-        <div class="art-reflection"></div>
+  <div class="progressive-blur-edge edge-top" aria-hidden="true">
+    <div class="p-blur-step step-1"></div>
+    <div class="p-blur-step step-2"></div>
+    <div class="p-blur-step step-3"></div>
+    <div class="p-blur-step step-4"></div>
+  </div>
+  <div class="progressive-blur-edge edge-bottom" aria-hidden="true">
+    <div class="p-blur-step step-1"></div>
+    <div class="p-blur-step step-2"></div>
+    <div class="p-blur-step step-3"></div>
+    <div class="p-blur-step step-4"></div>
+  </div>
+  <main class="viewport">
+    <header class="top-header">
+      <a class="liquid-pill brand-pill" href="${e(DOWNLOAD_URL)}" target="_blank" rel="noopener">
+        <div class="dot"></div>
+        <span>A.R.S.A</span>
+      </a>
+      <span id="badge-pill" class="badge-pill">${artistId ? 'ARTIST' : (playlistId ? 'PLAYLIST' : 'TRACK')}</span>
+    </header>
+    <section class="main-card-wrapper">
+      <div class="glass-card" id="song-card">
+        <div class="card-progressive-shelf" aria-hidden="true"></div>
+        <div class="artwork-stage">
+          <div id="artwork-shadow" class="artwork-ambient-shadow" style="background-image: url('${e(image)}')" aria-hidden="true"></div>
+          <div id="vinyl-record" class="vinyl-record" aria-hidden="true">
+            <div class="vinyl-grooves"></div>
+            <div id="vinyl-label" class="vinyl-label" style="background-image: url('${e(image)}')">
+              <div class="vinyl-hole"></div>
+            </div>
+          </div>
+          <div class="album-sleeve">
+            <img id="cover-art" class="sleeve-cover" src="${e(image)}" alt="${e(title)}" crossorigin="anonymous">
+            <div class="sleeve-sheen"></div>
+            <div class="sleeve-progressive-footer">
+              <span class="sleeve-audio-tag">
+                <span class="eq-bars" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span>
+                </span>
+                <span>Lossless Spatial</span>
+              </span>
+            </div>
+          </div>
+          <button id="btn-play-toggle" class="btn-play-toggle" type="button" aria-label="Play Preview">
+            <svg id="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="song-info">
+          <h1 class="song-title-display" id="song-name">${e(title)}</h1>
+          <p class="song-artist-display" id="song-artist">${e(artist)}</p>
+          <div class="chips-row">
+            <span class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12h4l3-9 4 18 3-9h6"/></svg>
+              Lossless 24-bit
+            </span>
+            <span class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+              Liquid Glass Audio
+            </span>
+            <span id="chip-type" class="info-chip">${artistId ? 'ARTIST' : (playlistId ? 'PLAYLIST' : 'TRACK')}</span>
+          </div>
+        </div>
+        <div id="player-controls" class="player-controls">
+          <input id="audio-scrubber" class="scrubber-slider" type="range" min="0" max="100" value="0" step="0.1" aria-label="Audio scrubber">
+          <div class="time-row">
+            <span id="time-current">0:00</span>
+            <span id="preview-status" class="preview-status-label">Tap Play to Preview</span>
+            <span id="time-remaining">-:--</span>
+          </div>
+        </div>
+        <div class="actions-list">
+          <a href="${e(deepLink)}" class="btn-cta-primary" id="btn-open-arsa">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            <span>Open in A.R.S.A</span>
+          </a>
+          <div class="secondary-grid">
+            <button id="btn-share" class="btn-action-secondary" type="button" aria-label="Share">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              <span>Share</span>
+            </button>
+            <button id="btn-copy" class="btn-action-secondary" type="button" aria-label="Copy Link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy Link</span>
+            </button>
+            <a href="${e(DOWNLOAD_URL)}" class="btn-action-secondary" target="_blank" rel="noopener">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Get App</span>
+            </a>
+          </div>
+        </div>
       </div>
-      <h1 class="song-title" id="song-name">${e(title)}</h1>
-      <p class="song-artist" id="song-artist">${e(artist)}</p>
-      <div class="actions-group">
-        <a href="${e(deepLink)}" class="glass-btn glass-btn-primary" id="btn-open-arsa">
-          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Open in A.R.S.A
-        </a>
-        <a href="${e(DOWNLOAD_URL)}" class="glass-btn glass-btn-secondary" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download A.R.S.A
-        </a>
-      </div>
-    </div>
+    </section>
+    <footer class="site-footer">
+      <p>A.R.S.A Music &bull; Pure Liquid Glass &bull; Ad-Free Lossless &bull; ARYAVL.COM</p>
+    </footer>
   </main>
-  <footer class="site-footer">
-    <p class="footer-desc">A.R.S.A is an ad-free, open-source music player featuring synchronized lyrics, gapless playback, and high-fidelity audio streams.</p>
-    <div class="footer-meta-row">
-      <span>HOSTED AT: <a href="https://listen.aryavl.com">listen.aryavl.com</a></span>
-      <span>•</span>
-      <span><a href="https://github.com/aryavl/arsa" target="_blank" rel="noopener">SOURCE (GPL-3.0)</a></span>
-      <span>•</span>
-      <span>POWERED BY <a href="https://aryavl.com" target="_blank" rel="noopener" class="powered-by">ARYAVL.COM</a></span>
+  <div id="yt-frame-container"></div>
+  <div id="toast" class="toast-pill" role="status" aria-live="polite">Link copied to clipboard</div>
+  <aside id="smart-app-banner" class="smart-banner" aria-label="Open in App">
+    <div class="smart-banner-content">
+      <div class="smart-banner-icon">
+        <img src="https://app.aryavl.com/assets/assets/images/arsa-logo.6b8664469176a1cbc68b69165e007f8d.png" alt="A.R.S.A" width="40" height="40">
+      </div>
+      <div class="smart-banner-text">
+        <div class="smart-banner-title">Experience in A.R.S.A</div>
+        <div class="smart-banner-sub">Lossless audio, beat-synced lyrics & Liquid Glass UI</div>
+      </div>
     </div>
-  </footer>
+    <div class="smart-banner-actions">
+      <a href="${e(deepLink)}" class="smart-banner-btn" id="btn-smart-open">OPEN</a>
+      <button class="smart-banner-close" type="button" onclick="document.getElementById('smart-app-banner').classList.add('dismissed')" aria-label="Dismiss">&times;</button>
+    </div>
+  </aside>
   <script src="/assets/share.js"></script>
 </body>
 </html>`;
